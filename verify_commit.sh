@@ -1,21 +1,23 @@
 #!/bin/bash
-target_server="https://github.com/takuyakt/poc_script.git"
-target_repository=.
+target_server="https://github.com/takuyakt/poc_scripts.git"
+target_repository=poc_scripts
 target_branch=master
 last_git_revision=3797cbb
 git_revision=HEAD
-#IFS=$'\n';
+file_size_threshold=1000
+output=first_line
 
+cd ${target_repository} 
 if [ ! -e ${target_repository} ]; then
  #git clone
  git clone ${target_server}
 fi
 
-cd ${target_repository}
+
 git pull
 
 #ターゲットブランチを見つける。
-git checkout -fb ${target_branch}
+git checkout -B ${target_branch}
 
 #commit hash値一覧を取得する。
 
@@ -25,15 +27,28 @@ commit_hashs=`git log ${target_branch} --pretty=format:"%h" ${last_git_revision}
 #ここからloop処理をする。
 for hash in ${commit_hashs}
 do
+# 対象をcheckout
+ git reset --hard ${hash}
+
  # --no-mergesは外す。
- git_files=`git show ${target_branch} ${hash} --pretty="format:" --name-only` 
- for line in  ${git_files}
+ git show ${hash} --pretty="format:" --name-status > tmp.txt 
+ while read line
  do
-  #file sizeを確認する。
-   file_size=`ls -la ${line} | awk '{ print $5 }'`
-  #MIME-typeを確認する。
-   mime_type=`file -i ${line}`
-   output="${output}\n${hash},${line},${file_size},${mime_type}"
-  done
+  var=($line)
+  file_size_flag=N
+  if [ ${var[0]} = "D" ]; then
+   file_size=0
+   mime_type="deleted file" 
+  else
+   #file sizeを確認する。
+   file_size=`ls -la ${var[1]} | awk '{ print $5 }'`
+   if [ ${file_size} -gt ${file_size_threshold} ]; then
+    file_size_flag=Y
+   fi
+   #MIME-typeを確認する。
+   mime_type=`file -b ${var[1]}`
+  fi
+   output="${output}\n${hash},${var[0]},${var[1]},${file_size},${file_size_flag},${mime_type}"
+ done <tmp.txt
 done
 echo -e $output 
