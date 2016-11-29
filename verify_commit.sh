@@ -13,23 +13,20 @@ if [ ! -e ${target_repository} ]; then
  git clone ${target_server}
 fi
 
-
 git pull
 
-#ターゲットブランチを見つける。
+#ターゲットブランチをcheckout
 git checkout -B ${target_branch}
 
 #commit hash値一覧を取得する。
-
 commit_hashs=`git log ${target_branch} --pretty=format:"%h" ${last_git_revision}..${git_revision}` 
-
 
 #ここからloop処理をする。
 for hash in ${commit_hashs}
 do
-# 対象をcheckout
+# 対象ファイルをgit resetでローカルに出力する。
  git reset --hard ${hash}
-
+ 
  # --no-mergesは外す。
  git show ${hash} --pretty="format:" --name-status > tmp.txt 
  while read line
